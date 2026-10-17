@@ -3887,9 +3887,14 @@ EVENT is the state-change description passed by Emacs."
           (setq desktop-save-buffer nil)  ; Don't save/restore dead sessions
           (if ghostel-kill-buffer-on-exit
               (kill-buffer buf)
-            (let ((inhibit-read-only t))
-              (goto-char (point-max))
-              (insert "\n[Process exited]\n"))))))))
+            ;; Written into the terminal, not the buffer: a redraw still
+            ;; pending for the final output would otherwise overwrite it.
+            ;; DECSTR restores a readable charset and margins; leaving
+            ;; mode 2026 lets the renderer draw a frame the child never closed.
+            (when ghostel--term
+              (ghostel--write-vt ghostel--term
+                                 "\e[!p\e[?2026l\r\n[Process exited]\r\n")
+              (ghostel--invalidate))))))))
 
 (defun ghostel--resolve-local-executable (program)
   "Return the absolute local executable path for PROGRAM.

@@ -102,6 +102,12 @@ Run all `compile` commands in a Ghostel buffer.
   :hook (after-init . ghostel-compile-global-mode))
 ```
 
+Replace `async-shell-command` with a Ghostel version.
+```emacs-lisp
+(use-package ghostel-shell-command
+  :hook (after-init . ghostel-shell-command-global-mode))
+```
+
 Replace comint's built-in `ansi-color-process-output` with Ghostel's VT parser.
 ```emacs-lisp
 (use-package ghostel-comint

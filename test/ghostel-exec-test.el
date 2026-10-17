@@ -465,5 +465,32 @@ unmodified so later visual buffers still send `q' to the program."
       (kill-buffer buf))))
 
 
+(ert-deftest ghostel-test-exec-exit-marker-follows-final-output ()
+  "The exit marker lands in the terminal after the command's last output."
+  :tags '(native)
+  (pcase-let ((`(,program . ,args)
+               (ghostel-test--shell-command "echo GHOSTEL_LAST_LINE")))
+    (ghostel-test--with-pty-matrix backend
+      (ghostel-test--with-exec-buffer (_buf proc program args)
+        (ghostel-test--wait-until
+         (lambda () (not (process-live-p proc))) nil 5)
+        (ghostel-test--wait-for-text "[Process exited]" nil 5)
+        (should (string-match-p "GHOSTEL_LAST_LINE\n+\\[Process exited\\]"
+                                (ghostel-test--terminal-text)))))))
+
+(ert-deftest ghostel-test-exec-exit-marker-renders-inside-open-sync-frame ()
+  "A child dying inside a mode 2026 frame does not block the exit marker."
+  :tags '(native)
+  (skip-unless (not (ghostel-test--windows-p)))
+  (ghostel-test--with-pty-matrix backend
+    (ghostel-test--with-exec-buffer
+        (_buf proc "/bin/sh" (list "-c" "printf 'GHOSTEL_SYNC\\033[?2026h'"))
+      (ghostel-test--wait-until
+       (lambda () (not (process-live-p proc))) nil 5)
+      (ghostel-test--wait-for-text "[Process exited]" nil 5)
+      (should (ghostel-test--redraw ghostel--term))
+      (should (string-match-p "GHOSTEL_SYNC" (buffer-string)))
+      (should (string-match-p "\\[Process exited\\]" (buffer-string))))))
+
 (provide 'ghostel-exec-test)
 ;;; ghostel-exec-test.el ends here
