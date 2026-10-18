@@ -1482,8 +1482,8 @@ A child map, so `ghostel-menu' is not also active via the local map.")
     ["Clear Screen" ghostel-clear]
     ["Clear Scrollback" ghostel-clear-scrollback]
     "--"
-    ["Terminal" ghostel]
-    ["Project Terminal" ghostel-project]
+    ["New Terminal" ghostel-new]
+    ["New Project Terminal" ghostel-project-new]
     ["Next Terminal" ghostel-next]
     ["Previous Terminal" ghostel-previous]
     ["List Terminals" ghostel-list-buffers]
@@ -5348,6 +5348,13 @@ Returns the buffer."
   ;; wrappers that let-bind `ghostel-buffer-name' get their own slots.
   (ghostel--start `((kind . term) (name . ,ghostel-buffer-name))
                   ghostel-buffer-name arg))
+
+;;;###autoload
+(defun ghostel-new ()
+  "Create a new Ghostel terminal, like \\[universal-argument] `ghostel'.
+Returns the buffer."
+  (interactive)
+  (ghostel t))
 
 (defun ghostel-exec (buffer program &optional args identity)
   "Run PROGRAM with ARGS as a ghostel terminal in BUFFER.

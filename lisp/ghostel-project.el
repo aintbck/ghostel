@@ -68,6 +68,13 @@ Returns the buffer."
                     arg)))
 
 ;;;###autoload
+(defun ghostel-project-new ()
+  "Create a new Ghostel terminal in the current project's root.
+Like \\[universal-argument] `ghostel-project'.  Returns the buffer."
+  (interactive)
+  (ghostel-project t))
+
+;;;###autoload
 (defun ghostel-project-buffer-list ()
   "Return ghostel buffers belonging to the current project, sorted by name.
 Scoping is controlled by `ghostel-project-buffer-scope'.

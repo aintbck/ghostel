@@ -50,6 +50,15 @@
         (should (equal (car captured) arg))
         (should (equal (cdr captured) "*myproj-ghostel*"))))))
 
+(ert-deftest ghostel-test-project-new-always-fresh ()
+  "`ghostel-project-new' calls `ghostel-project' with a non-numeric prefix."
+  (let (project-arg)
+    (cl-letf (((symbol-function 'ghostel-project)
+               (lambda (&optional arg) (setq project-arg arg))))
+      (ghostel-project-new)
+      (should project-arg)
+      (should-not (numberp project-arg)))))
+
 (ert-deftest ghostel-test-project-buffer-name-remote ()
   "`ghostel--project-buffer-name' host-qualifies remote roots (bug #344)."
   (require 'project)

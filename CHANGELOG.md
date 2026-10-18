@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `ghostel-new` and `ghostel-project-new` always create a new terminal,
+  like `ghostel` / `ghostel-project` with a prefix argument.
+  The terminal menu entries now call them.
+
 ### Changed
 - `ghostel-project`, `ghostel-project-next`, `ghostel-project-previous`,
   `ghostel-project-list-buffers`, `ghostel-project-buffer-list` and

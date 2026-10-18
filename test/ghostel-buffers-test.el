@@ -154,6 +154,15 @@ Each BINDING is (VAR NAME [DIR [IDENTITY]])."
         (should ghostel-arg)
         (should-not (numberp ghostel-arg))))))
 
+(ert-deftest ghostel-test-new-always-fresh ()
+  "`ghostel-new' calls `ghostel' with a non-numeric prefix."
+  (let (ghostel-arg)
+    (cl-letf (((symbol-function 'ghostel)
+               (lambda (&optional arg) (setq ghostel-arg arg))))
+      (ghostel-new)
+      (should ghostel-arg)
+      (should-not (numberp ghostel-arg)))))
+
 (ert-deftest ghostel-test-other-no-buffers-creates-default ()
   "With zero ghostel buffers, `ghostel-other' calls `ghostel' without arg."
   (let ((called 'not-called))
