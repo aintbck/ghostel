@@ -16,6 +16,7 @@
 (require 'ghostel-compile)
 (require 'ghostel-debug)
 (require 'ghostel-eshell)
+(require 'ghostel-project)
 
 (declare-function ghostel--cleanup-temp-paths "ghostel")
 (declare-function ghostel--kill-native-process "ghostel-module" (term))

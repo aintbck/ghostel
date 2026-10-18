@@ -17,6 +17,7 @@
 (require 'ert)
 (require 'consult)
 (require 'ghostel)
+(require 'ghostel-project)
 (require 'consult-ghostel)
 
 (consult-ghostel-mode 1)

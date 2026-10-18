@@ -67,6 +67,7 @@
 
 (require 'ghostel)
 (require 'compile)
+(require 'project)
 
 (declare-function ghostel--redraw "ghostel-module"
                   (term &optional full force-sync))

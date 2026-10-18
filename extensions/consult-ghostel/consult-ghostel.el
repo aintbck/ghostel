@@ -63,6 +63,9 @@
 (require 'ghostel)
 (require 'marginalia nil 'noerror)
 
+(declare-function ghostel-project "ghostel-project" (&optional arg))
+(declare-function ghostel-project-buffer-list "ghostel-project")
+
 (defvar consult-ghostel--buffer-history nil
   "Minibuffer history for the buffer-picking `consult-ghostel' commands.")
 
@@ -341,7 +344,7 @@ History comes from `ghostel-shell-history-commands'."
 ;;; consult-line over logical lines
 
 (defun consult-ghostel--line-candidates (orig top curr-line)
-  "Build consult-line candidates from logical lines in ghostel buffers.
+  "Build `consult-line' candidates from logical lines in ghostel buffers.
 Rows joined by wrap newlines become one candidate with the newlines
 spliced out, so matching works across soft wraps.  Outside ghostel
 buffers, call ORIG with TOP and CURR-LINE unchanged."

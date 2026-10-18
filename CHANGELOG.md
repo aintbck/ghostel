@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- `ghostel-project`, `ghostel-project-next`, `ghostel-project-previous`,
+  `ghostel-project-list-buffers`, `ghostel-project-buffer-list` and
+  `ghostel-project-buffer-scope` moved to `ghostel-project.el`.  The
+  commands and `ghostel-project-buffer-list` are autoloaded; a bare
+  `load-path` setup without package autoloads needs
+  `(require 'ghostel-project)`.
+
 ## [0.58.0] — 2026-10-15
 
 ### Added
