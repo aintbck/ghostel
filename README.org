@@ -944,6 +944,10 @@ Pixel data is rendered through Emacs's built-in image support: PNG payloads are
 decoded by a vendored stb_image, and raw RGB/RGBA/Gray/GrayAlpha transmissions
 are converted to PPM in the native module - no external ImageMagick dependency.
 
+Images need a graphical frame.  Buffers created in a terminal frame (=emacs
+-nw=, =emacsclient -t=) do not advertise the protocol, so apps that probe for
+it fall back to their own text rendering.
+
 XTWINOPS size queries (CSI 14 / 16 / 18 t) are answered so apps can detect
 graphics support and pick image dimensions; without that, =timg= falls back to
 half-block rendering even when =TERM_PROGRAM=ghostty=.

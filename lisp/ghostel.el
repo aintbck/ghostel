@@ -5285,10 +5285,15 @@ spawn after initialization."
                               (if (window-live-p w)
                                   (window-max-chars-per-line w)
                                 80)))))
+      ;; A TTY frame cannot show images: disable the protocol so apps'
+      ;; support probes fail and they fall back to text rendering.
       (setq ghostel--term
             (ghostel--new height width
                           ghostel-max-scrollback
-                          ghostel-kitty-graphics-storage-limit
+                          (if (or (display-graphic-p (window-frame w))
+                                  (ghostel--daemon-dummy-frame-p (window-frame w)))
+                              ghostel-kitty-graphics-storage-limit
+                            0)
                           (ghostel--kitty-mediums-bits)))
       ;; Seed libghostty's cell dimensions before the process starts —
       ;; otherwise kitty graphics placements arriving in the very first

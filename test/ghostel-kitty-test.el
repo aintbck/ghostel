@@ -25,6 +25,30 @@ they do under a `default' face remap."
               ((symbol-function 'default-font-height) (lambda () 16)))
       (funcall body))))
 
+(defun ghostel-test--kitty-init-storage-limit (graphic &optional dummy)
+  "Return the storage limit `ghostel--init-buffer' passes on a GRAPHIC frame.
+DUMMY non-nil fakes the daemon's initial frame."
+  (let (limit)
+    (with-temp-buffer
+      (cl-letf (((symbol-function 'display-graphic-p) (lambda (&rest _) graphic))
+                ((symbol-function 'ghostel--daemon-dummy-frame-p) (lambda (_) dummy))
+                ((symbol-function 'ghostel--new)
+                 (lambda (_h _w _sb storage _mediums)
+                   (setq limit storage) 'fake-term))
+                ((symbol-function 'ghostel--set-size-with-cell-dims) #'ignore)
+                ((symbol-function 'ghostel--apply-palette) #'ignore)
+                ((symbol-function 'ghostel--apply-bold-config) #'ignore))
+        (ghostel--init-buffer (current-buffer) 24 80)))
+    limit))
+
+(ert-deftest ghostel-test-kitty-disabled-on-tty-frame ()
+  "A terminal frame creates the terminal with kitty graphics disabled."
+  (should (eql 0 (ghostel-test--kitty-init-storage-limit nil)))
+  (should (eql ghostel-kitty-graphics-storage-limit
+               (ghostel-test--kitty-init-storage-limit t)))
+  (should (eql ghostel-kitty-graphics-storage-limit
+               (ghostel-test--kitty-init-storage-limit nil t))))
+
 (ert-deftest ghostel-test-detect-cell-pixel-scale-standard-dpi ()
   "96 DPI display resolves to ~1.0 (no scaling)."
   (cl-letf (((symbol-function 'display-graphic-p) (lambda () t))

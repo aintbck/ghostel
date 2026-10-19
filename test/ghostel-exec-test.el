@@ -53,6 +53,7 @@ buffer eventually shows up."
           ;; Sanity: the buffer is not displayed in any window.
           (should-not (get-buffer-window buf t))
           (cl-letf (((symbol-function 'ghostel--load-module) #'ignore)
+                    ((symbol-function 'display-graphic-p) (lambda (&rest _) t))
                     ((symbol-function 'ghostel--new)
                      (lambda (&rest args) (setq captured args) 'fake-term))
                     ((symbol-function 'ghostel--set-size-with-cell-dims) #'ignore)
