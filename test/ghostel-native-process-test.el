@@ -20,21 +20,26 @@
 
 (defun ghostel-test-native-process--with-events-filter (fn)
   "Call FN in a buffer-local `ghostel--events-filter' unit-test context.
-FN receives a fake pipe process value and a zero-argument function
+FN receives a pipe process and a zero-argument function
 returning the number of redraw invalidations requested."
-  (let ((buffer (generate-new-buffer " *ghostel-test-events-filter*")))
+  (let ((buffer (generate-new-buffer " *ghostel-test-events-filter*"))
+        (pipe (make-pipe-process :name "ghostel-test-events-filter" :noquery t)))
     (unwind-protect
         (with-current-buffer buffer
-          (setq-local ghostel--event-buf nil)
           (let ((ghostel-test-native-process--events nil)
                 (invalidations 0))
             (cl-letf (((symbol-function 'process-buffer)
                        (lambda (_process) buffer))
                       ((symbol-function 'ghostel--invalidate)
                        (lambda () (cl-incf invalidations))))
-              (funcall fn 'ghostel-test-process (lambda () invalidations)))))
+              (funcall fn pipe (lambda () invalidations)))))
+      (delete-process pipe)
       (when (buffer-live-p buffer)
         (kill-buffer buffer)))))
+
+(defun ghostel-test-native-process--stash (pipe)
+  "Return the incomplete event tail held on PIPE."
+  (process-get pipe 'ghostel--event-buf))
 
 (defun ghostel-test-native-process--command-output (command &optional spawn-wrapper)
   "Spawn COMMAND through the native primitive and return its output.
@@ -50,7 +55,7 @@ newline once the marker is on screen."
                   :buffer (current-buffer)
                   ;; The reaper's bare exit status ends the event stream.
                   :filter (lambda (pipe output)
-                            (when (string-match "\\([0-9]+\\)\\'" output)
+                            (when (string-match "\\([0-9]+\\)\n\\'" output)
                               (setq exit-status (match-string 1 output)))
                             (ghostel--events-filter pipe output))
                   :noquery t))
@@ -143,7 +148,7 @@ must not signal, or `kill-buffer' aborts and the buffer survives."
       proc
       "(ghostel-test-native-process--record \"one\")(ghostel-test-native-process--record \"two\" 2)")
      (should (equal '(("two" 2) ("one")) ghostel-test-native-process--events))
-     (should (null ghostel--event-buf))
+     (should (null (ghostel-test-native-process--stash proc)))
      (should (= 1 (funcall invalidations))))))
 
 (ert-deftest ghostel-test-events-filter-partial-writes-across-chunks ()
@@ -152,10 +157,24 @@ must not signal, or `kill-buffer' aborts and the buffer survives."
    (lambda (proc _invalidations)
      (ghostel--events-filter proc "(ghostel-test-native-process--record \"par")
      (should (equal nil ghostel-test-native-process--events))
-     (should (equal "(ghostel-test-native-process--record \"par" ghostel--event-buf))
+     (should (equal "(ghostel-test-native-process--record \"par" (ghostel-test-native-process--stash proc)))
      (ghostel--events-filter proc "tial\" 42)")
      (should (equal '(("partial" 42)) ghostel-test-native-process--events))
-     (should (null ghostel--event-buf)))))
+     (should (null (ghostel-test-native-process--stash proc))))))
+
+(ert-deftest ghostel-test-events-filter-exit-status-split-across-chunks ()
+  "A split exit status is reassembled before the pipe is deleted."
+  (ghostel-test-native-process--with-events-filter
+   (lambda (proc _invalidations)
+     (let (deleted)
+       (cl-letf (((symbol-function 'delete-process)
+                  (lambda (_proc) (setq deleted t))))
+         (ghostel--events-filter proc "13")
+         (should-not deleted)
+         (should (equal "13" (ghostel-test-native-process--stash proc)))
+         (ghostel--events-filter proc "7\n")
+         (should (= 137 (process-get proc 'ghostel--exit-status)))
+         (should deleted))))))
 
 (ert-deftest ghostel-test-events-filter-complete-prefix-with-partial-tail ()
   "Native process event filter evaluates complete events before a partial tail."
@@ -165,22 +184,22 @@ must not signal, or `kill-buffer' aborts and the buffer survives."
       proc
       "(ghostel-test-native-process--record \"first\")(ghostel-test-native-process--record \"sec")
      (should (equal '(("first")) ghostel-test-native-process--events))
-     (should (equal "(ghostel-test-native-process--record \"sec" ghostel--event-buf))
+     (should (equal "(ghostel-test-native-process--record \"sec" (ghostel-test-native-process--stash proc)))
      (ghostel--events-filter proc "ond\")")
      (should (equal '(("second") ("first")) ghostel-test-native-process--events))
-     (should (null ghostel--event-buf)))))
+     (should (null (ghostel-test-native-process--stash proc))))))
 
 (ert-deftest ghostel-test-events-filter-failing-event-does-not-poison-next-write ()
   "Native process event filter can process a good write after a failing one.
 A well-formed event whose evaluation signals is logged and discarded; it
-must not leave `ghostel--event-buf' in a poisoned state."
+must not leave a poisoned tail on the pipe."
   (ghostel-test-native-process--with-events-filter
    (lambda (proc _invalidations)
      (ghostel--events-filter proc "(error \"boom\")")
-     (should (null ghostel--event-buf))
+     (should (null (ghostel-test-native-process--stash proc)))
      (ghostel--events-filter proc "(ghostel-test-native-process--record \"good\")")
      (should (equal '(("good")) ghostel-test-native-process--events))
-     (should (null ghostel--event-buf)))))
+     (should (null (ghostel-test-native-process--stash proc))))))
 
 (ert-deftest ghostel-test-events-filter-signalling-event-does-not-lose-tail ()
   "A signalling event is logged but does not abort the rest of the batch."
@@ -196,12 +215,12 @@ must not leave `ghostel--event-buf' in a poisoned state."
               "(ghostel-test-native-process--record \"after\")"
               "(ghostel-test-native-process--record \"par"))
      (should (equal '(("after") ("before")) ghostel-test-native-process--events))
-     (should (equal "(ghostel-test-native-process--record \"par" ghostel--event-buf))
+     (should (equal "(ghostel-test-native-process--record \"par" (ghostel-test-native-process--stash proc)))
      (should (= 1 (funcall invalidations)))
      (ghostel--events-filter proc "tial\")")
      (should (equal '(("partial") ("after") ("before"))
                     ghostel-test-native-process--events))
-     (should (null ghostel--event-buf)))))
+     (should (null (ghostel-test-native-process--stash proc))))))
 
 (ert-deftest ghostel-test-native-process-decodes-windows-unibyte-inputs ()
   "Native spawn decodes Windows unibyte process inputs with the ANSI code page."

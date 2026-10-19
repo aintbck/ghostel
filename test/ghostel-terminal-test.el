@@ -540,15 +540,15 @@ state from the wrong buffer after feeding output to the native module."
   "Native event callbacks do not leak buffer switches into invalidation."
   (let ((ghostel-buf (generate-new-buffer " *ghostel-test-events-buf*"))
         (other-buf (generate-new-buffer " *ghostel-test-events-other*"))
+        (pipe (make-pipe-process :name "ghostel-test-events" :noquery t))
         invalidate-called)
     (unwind-protect
         (with-current-buffer ghostel-buf
-          (setq-local ghostel--event-buf nil)
           (cl-letf (((symbol-function 'process-buffer) (lambda (_) ghostel-buf))
                     ((symbol-function 'ghostel--invalidate)
                      (lambda () (setq invalidate-called (current-buffer)))))
             (ghostel--events-filter
-             'fake-proc
+             pipe
              (format "(set-buffer %S)(setq-local ghostel-test--event-buffer-ok t)"
                      (buffer-name other-buf))))
           (should (eq (current-buffer) ghostel-buf))
@@ -556,6 +556,7 @@ state from the wrong buffer after feeding output to the native module."
           (should (bound-and-true-p ghostel-test--event-buffer-ok))
           (should-not (local-variable-p 'ghostel-test--event-buffer-ok
                                         other-buf)))
+      (delete-process pipe)
       (kill-buffer ghostel-buf)
       (kill-buffer other-buf))))
 

@@ -230,6 +230,27 @@ is nil, SIGHUP is ignored."
           (ghostel-test--cleanup-exec-buffer buf))
         (delete-directory dir t)))))
 
+(ert-deftest ghostel-test-exec-exit-hook-reports-exit-code ()
+  "Exit functions receive the child's exit status in the event string."
+  :tags '(native posix)
+  (skip-unless (file-executable-p "/bin/sh"))
+  (ghostel-test--with-pty-matrix backend
+    (dolist (case '(("exit 0" . "finished\n")
+                    ("exit 3" . "exited abnormally with code 3\n")))
+      (let ((buf (generate-new-buffer " *ghostel-test-exit-code*"))
+            proc exit-event)
+        (unwind-protect
+            (progn
+              (with-current-buffer buf
+                (setq proc (ghostel-exec buf "/bin/sh" (list "-c" (car case))))
+                (add-hook 'ghostel-exit-functions
+                          (lambda (_buffer event) (setq exit-event event))
+                          nil t))
+              (ghostel-test--wait-until (lambda () exit-event) proc 5)
+              (should (equal exit-event (cdr case))))
+          (when (buffer-live-p buf)
+            (ghostel-test--cleanup-exec-buffer buf)))))))
+
 (ert-deftest ghostel-test-exec-child-kill-runs-exit-lifecycle ()
   "Killing the child process runs the normal Ghostel exit lifecycle."
   :tags '(native posix)
