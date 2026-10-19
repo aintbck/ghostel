@@ -427,8 +427,7 @@ auto   Query while `ghostel-command-running-p' reports something other than
 
 (defcustom ghostel-exit-functions nil
   "Hook run when the terminal process exits.
-Each function is called with two arguments: the buffer and the
-exit event string."
+Each function is called with two arguments: buffer and the exit event string."
   :type 'hook)
 
 (defcustom ghostel-foreground-change-functions nil
@@ -3859,6 +3858,8 @@ EVENT is the state-change description passed by Emacs."
         (ghostel--defer #'ghostel-status--drop-running)
         (remove-hook 'pre-redisplay-functions #'ghostel--fake-cursor-update t)
         (ghostel--fake-cursor-clear)
+        (when (and ghostel-exit-functions (not (ghostel--terminal-frozen-p)))
+          (ghostel--commit-final-frame buf))
         (ghostel--run-hook-safely 'ghostel-exit-functions buf event))
       (when (buffer-live-p buf)
         (with-current-buffer buf
@@ -4608,6 +4609,23 @@ line mode keeps the user's point."
           (set-window-point window (if (eq ghostel--input-mode 'line)
                                        orig
                                      (or cursor target))))))))
+
+(defun ghostel--commit-final-frame (buffer)
+  "Render BUFFER's terminal grid now that its process has exited.
+`ghostel--redraw-now' declines without a render window, in copy mode,
+and when a redraw-inhibit hook asks; the grid is then rendered directly."
+  (ghostel--redraw-now buffer t)
+  (with-current-buffer buffer
+    (when (and ghostel--pending-redraw ghostel--term)
+      (let ((inhibit-read-only t)
+            (inhibit-modification-hooks t))
+        (when (with-selected-window (or (ghostel--get-render-window buffer)
+                                        (selected-window))
+                (with-current-buffer buffer
+                  (ghostel--redraw ghostel--term (eq ghostel--input-mode 'line) t)))
+          (setq ghostel--pending-redraw nil
+                ghostel--force-next-redraw nil)
+          (ghostel--schedule-link-detection))))))
 
 (defun ghostel--maybe-defer-redraw (buffer)
   "Defer BUFFER's redraw if a `ghostel-inhibit-redraw-functions' hook asks.

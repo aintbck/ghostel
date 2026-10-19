@@ -251,6 +251,26 @@ is nil, SIGHUP is ignored."
           (when (buffer-live-p buf)
             (ghostel-test--cleanup-exec-buffer buf)))))))
 
+(ert-deftest ghostel-test-exec-exit-hook-sees-final-output ()
+  "Exit functions see the child's final output, stderr included, in the buffer."
+  :tags '(native posix)
+  (skip-unless (file-executable-p "/bin/sh"))
+  (ghostel-test--with-pty-matrix backend
+    (let ((buf (generate-new-buffer " *ghostel-test-exit-output*"))
+          proc seen)
+      (unwind-protect
+          (progn
+            (with-current-buffer buf
+              (setq proc (ghostel-exec buf "/bin/sh"
+                                       '("-c" "echo OUT; echo ERR >&2; exit 1")))
+              (add-hook 'ghostel-exit-functions
+                        (lambda (_buffer _event) (setq seen (buffer-string)))
+                        nil t))
+            (ghostel-test--wait-until (lambda () seen) proc 5)
+            (should (string-match-p "OUT" seen))
+            (should (string-match-p "ERR" seen)))
+        (ghostel-test--cleanup-exec-buffer buf)))))
+
 (ert-deftest ghostel-test-exec-child-kill-runs-exit-lifecycle ()
   "Killing the child process runs the normal Ghostel exit lifecycle."
   :tags '(native posix)

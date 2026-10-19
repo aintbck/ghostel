@@ -547,27 +547,6 @@ same as in any compilation buffer."
 
 ;;; Spawning
 
-(defun ghostel-compile--commit-pending-frame (buffer)
-  "Render BUFFER's terminal grid when `ghostel--redraw-now' declined to.
-It declines while copy mode holds the terminal frozen, while the
-program has a synchronized-output batch open, and when no window
-supplies render metrics.  The process has exited and the teardown
-destroys the grid, so commit it here or lose the output it holds."
-  (when ghostel--pending-redraw
-    (let* ((inhibit-read-only t)
-           (inhibit-modification-hooks t)
-           (window (ghostel--get-render-window buffer))
-           (full (eq ghostel--input-mode 'line))
-           ;; Selecting a window that shows some other buffer would render
-           ;; into it, so render unselected when this buffer has none.
-           (rendered (if window
-                         (with-selected-window window
-                           (ghostel--redraw ghostel--term full t))
-                       (ghostel--redraw ghostel--term full t))))
-      (when rendered
-        (setq ghostel--pending-redraw nil)
-        (ghostel--schedule-link-detection)))))
-
 (defun ghostel-compile--sentinel (process _event)
   "Sentinel for the compile PROCESS: finalize the buffer on exit."
   (when (memq (process-status process) '(exit signal))
@@ -583,17 +562,9 @@ destroys the grid, so commit it here or lose the output it holds."
               (when ghostel-compile-debug
                 (message "ghostel-compile: sentinel exit=%S status=%S"
                          exit (process-status process)))
-              ;; Cancel any scheduled redraw and commit the current terminal state
-              ;; to the buffer synchronously.  Without this, a short-lived
-              ;; command (`echo`, `false`, `exit 7`) finishes before the
-              ;; ~16 ms redraw timer fires and its output is lost when
-              ;; `--teardown-terminal' destroys the renderer.
-              (when ghostel--term
-                (when ghostel--redraw-timer
-                  (cancel-timer ghostel--redraw-timer)
-                  (setq ghostel--redraw-timer nil))
-                (ghostel--redraw-now buffer)
-                (ghostel-compile--commit-pending-frame buffer))
+              ;; A short-lived command finishes before the redraw timer
+              ;; fires, and `--teardown-terminal' destroys the renderer.
+              (ghostel--commit-final-frame buffer)
               (ghostel-compile--finalize buffer exit (current-time)))))
       (setq compilation-in-progress
             (delq process compilation-in-progress))
