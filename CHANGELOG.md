@@ -4,10 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.59.0] — 2026-10-19
+
 ### Added
+- `ghostel-shell-command`: an `async-shell-command` equivalent backed by
+  a real TTY.  The command runs through `shell-file-name` and
+  `shell-command-switch`, the buffer is kept after exit, and
+  `async-shell-command-buffer` decides what happens when the buffer is
+  still busy.  `ghostel-shell-command-global-mode` routes every
+  asynchronous `shell-command`, including dired's and project's,
+  through ghostel.
+  Closes [#742](https://github.com/dakra/ghostel/issues/742).
 - `ghostel-new` and `ghostel-project-new` always create a new terminal,
   like `ghostel` / `ghostel-project` with a prefix argument.
   The terminal menu entries now call them.
+  Closes [#610](https://github.com/dakra/ghostel/issues/610).
 
 ### Changed
 - `ghostel-project`, `ghostel-project-next`, `ghostel-project-previous`,
@@ -16,6 +27,15 @@ All notable changes to this project will be documented in this file.
   commands and `ghostel-project-buffer-list` are autoloaded; a bare
   `load-path` setup without package autoloads needs
   `(require 'ghostel-project)`.
+
+### Fixed
+- `ghostel-exit-functions` on the native PTY now receives the child's
+  real exit status ("exited abnormally with code N") instead of always
+  "finished", matching the Emacs PTY backend.
+- The child's final output is rendered into the buffer before
+  `ghostel-exit-functions` runs, so hooks (and
+  `ghostel-kill-buffer-on-exit`) no longer see a buffer missing the
+  last lines.
 
 ## [0.58.0] — 2026-10-15
 
