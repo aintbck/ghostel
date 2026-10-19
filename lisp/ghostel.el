@@ -427,7 +427,8 @@ auto   Query while `ghostel-command-running-p' reports something other than
 
 (defcustom ghostel-exit-functions nil
   "Hook run when the terminal process exits.
-Each function is called with two arguments: buffer and the exit event string."
+Each function is called with two arguments: buffer and the exit event string.
+On the native PTY a child killed by signal S exits with code 128+S."
   :type 'hook)
 
 (defcustom ghostel-foreground-change-functions nil
